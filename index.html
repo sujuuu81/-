@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b17" />
+  <meta name="description" content="配信者とリスナーが一緒に遊べる、観戦まで楽しいオンライン同時選択バトル CROWN SHIFT" />
+  <title>CROWN SHIFT — 観客参加型オンラインバトル</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <div id="app">
+    <div class="noise"></div>
+
+    <header class="topbar">
+      <button id="brandBtn" class="brand" aria-label="トップへ">
+        <span class="brand-crown">♛</span>
+        <span><strong>CROWN</strong><em>SHIFT</em></span>
+      </button>
+      <div class="top-actions">
+        <span id="connectionPill" class="pill offline"><i></i><span>未接続</span></span>
+        <button id="soundBtn" class="icon-btn" title="サウンド">🔊</button>
+        <button id="helpBtn" class="icon-btn" title="遊び方">？</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="homeScreen" class="screen active hero-screen">
+        <div class="hero-copy">
+          <p class="eyebrow">PLAYERS × AUDIENCE × CHAOS</p>
+          <h1>選ぶ瞬間も、<br><span>見破る瞬間も。</span></h1>
+          <p class="lead">2〜8人が同時に作戦を伏せる、読み合い型パーティーバトル。観客は世界ルールを投票し、勝者を予想し、試合そのものに参加する。</p>
+          <div class="feature-row">
+            <span>⚡ 1試合 約10分</span><span>🌐 URL参加</span><span>👀 観戦だけでも対戦</span>
+          </div>
+        </div>
+
+        <div class="entry-card glass">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-entry-tab="host">部屋を作る</button>
+            <button class="tab" data-entry-tab="join">参加する</button>
+          </div>
+
+          <div id="hostForm" class="entry-form active">
+            <label>あなたの名前<input id="hostName" maxlength="12" placeholder="配信者名" autocomplete="nickname" /></label>
+            <div class="form-grid">
+              <label>最大プレイヤー<select id="maxPlayers"><option>4</option><option selected>6</option><option>8</option></select></label>
+              <label>ラウンド数<select id="maxRounds"><option>6</option><option selected>8</option><option>10</option><option>12</option></select></label>
+              <label>選択時間<select id="turnSeconds"><option>15</option><option selected>20</option><option>25</option><option>30</option></select></label>
+              <label>勝利点<select id="winScore"><option>10</option><option selected>14</option><option>18</option><option>22</option></select></label>
+            </div>
+            <button id="createRoomBtn" class="primary-btn"><span>部屋を作成</span><b>→</b></button>
+            <p class="micro">ホストのブラウザがゲームサーバーになります。タブを閉じないでください。</p>
+          </div>
+
+          <div id="joinForm" class="entry-form">
+            <label>あなたの名前<input id="joinName" maxlength="12" placeholder="参加名" autocomplete="nickname" /></label>
+            <label>ルームコード<input id="roomCodeInput" maxlength="6" placeholder="ABC123" autocapitalize="characters" /></label>
+            <div class="role-picker">
+              <button class="role active" data-role="player"><span>⚔️</span><strong>プレイヤー</strong><small>王冠を奪う</small></button>
+              <button class="role" data-role="spectator"><span>👁️</span><strong>観客</strong><small>投票と予想</small></button>
+            </div>
+            <button id="joinRoomBtn" class="primary-btn"><span>部屋に入る</span><b>→</b></button>
+            <p id="joinError" class="error-text"></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="lobbyScreen" class="screen">
+        <div class="lobby-layout">
+          <div class="lobby-main glass">
+            <div class="section-head">
+              <div><p class="eyebrow">WAITING ROOM</p><h2>挑戦者を待っています</h2></div>
+              <span id="lobbyCount" class="count-badge">1 / 6</span>
+            </div>
+            <div id="playerLobbyList" class="player-lobby-list"></div>
+            <div class="lobby-footer">
+              <button id="addBotBtn" class="secondary-btn host-only">＋ CPUを追加</button>
+              <button id="startGameBtn" class="primary-btn compact host-only" disabled>ゲーム開始</button>
+              <p id="waitingText" class="guest-only">ホストが開始するまで待ってね。</p>
+            </div>
+          </div>
+
+          <aside class="invite-panel glass">
+            <p class="eyebrow">INVITE</p>
+            <h3>このコードを共有</h3>
+            <button id="roomCodeDisplay" class="room-code">------</button>
+            <div class="qr-shell"><canvas id="qrCanvas" width="220" height="220"></canvas></div>
+            <button id="copyInviteBtn" class="secondary-btn wide">招待URLをコピー</button>
+            <div class="audience-count"><span>👁️ 観客</span><strong id="audienceLobbyCount">0</strong></div>
+            <p class="micro">観客席はプレイヤー枠とは別。プレイヤー枠が埋まっていても参加できます。</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="gameScreen" class="screen game-screen">
+        <div class="game-topline">
+          <div class="round-label"><small>ROUND</small><strong id="roundDisplay">1 / 8</strong></div>
+          <div class="rule-banner"><span id="ruleIcon">👑</span><div><small>AUDIENCE RULE</small><strong id="ruleName">通常ルール</strong></div></div>
+          <div class="timer-shell"><div id="timerRing" class="timer-ring"><span id="timerText">20</span></div></div>
+        </div>
+
+        <div class="game-layout">
+          <aside class="score-panel glass">
+            <div class="panel-title"><span>ランキング</span><small>GLORY</small></div>
+            <div id="scoreboard" class="scoreboard"></div>
+            <div class="score-legend"><span>👑 勝利点</span><span>♥ 体力</span></div>
+          </aside>
+
+          <div class="arena-wrap">
+            <canvas id="arenaCanvas" width="960" height="720" aria-label="ゲームアリーナ"></canvas>
+            <div id="phaseOverlay" class="phase-overlay hidden"><strong>REVEAL</strong><span>作戦公開！</span></div>
+            <div id="reactionLayer" class="reaction-layer"></div>
+            <div id="eventTicker" class="event-ticker"><span>王冠を奪い合え！</span></div>
+          </div>
+
+          <aside class="action-panel glass">
+            <div id="playerControls">
+              <div class="panel-title"><span>作戦を選ぶ</span><small id="lockStatus">未確定</small></div>
+              <div class="move-box">
+                <p>① 移動先</p>
+                <div id="moveChoices" class="move-choices"></div>
+              </div>
+              <div class="tactic-box">
+                <p>② 作戦</p>
+                <div id="tacticChoices" class="tactic-choices"></div>
+              </div>
+              <div id="targetBox" class="target-box hidden">
+                <p>③ 対象</p>
+                <select id="targetSelect"></select>
+              </div>
+              <button id="lockActionBtn" class="primary-btn compact" disabled>この作戦で決定</button>
+              <button id="unlockActionBtn" class="text-btn hidden">選び直す</button>
+            </div>
+
+            <div id="spectatorControls" class="hidden">
+              <div class="panel-title"><span>観客席</span><small id="spectatorScore">0 HYPE</small></div>
+              <div class="spectator-card">
+                <p>次の世界ルールに投票</p>
+                <div id="ruleVoteChoices" class="vote-choices"></div>
+              </div>
+              <div class="spectator-card">
+                <p>ラウンド首位を予想</p>
+                <div id="predictionChoices" class="prediction-choices"></div>
+              </div>
+            </div>
+
+            <div class="reaction-dock">
+              <p>会場リアクション</p>
+              <div id="reactionButtons"><button>🔥</button><button>😂</button><button>😱</button><button>👑</button><button>👏</button></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="resultScreen" class="screen result-screen">
+        <div class="result-card glass">
+          <p class="eyebrow">FINAL RESULT</p>
+          <div id="winnerCrown" class="winner-crown">♛</div>
+          <h2 id="winnerName">WINNER</h2>
+          <p id="winnerSub">王冠の主が決まりました</p>
+          <div id="finalRanking" class="final-ranking"></div>
+          <div class="result-actions">
+            <button id="rematchBtn" class="primary-btn host-only">同じメンバーでもう一度</button>
+            <button id="backLobbyBtn" class="secondary-btn">ロビーへ戻る</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="helpDialog" class="help-dialog glass">
+      <button id="closeHelpBtn" class="dialog-close">×</button>
+      <p class="eyebrow">HOW TO PLAY</p>
+      <h2>王冠を取る。でも、読まれない。</h2>
+      <div class="help-grid">
+        <article><span>1</span><h3>同時に伏せる</h3><p>毎ラウンド、隣接エリアへの移動と作戦を選びます。誰が何を選んだかは公開まで分かりません。</p></article>
+        <article><span>2</span><h3>中央で得点</h3><p>中央の王冠エリアに残ればGLORY獲得。単独ならさらに高得点です。</p></article>
+        <article><span>3</span><h3>読み合う</h3><p>攻撃、ガード、強奪、爆弾、フェイント。相手の移動先まで読めれば一気に逆転できます。</p></article>
+        <article><span>4</span><h3>観客も勝負</h3><p>観客は次の特殊ルールを投票し、ラウンド首位を予想。予想的中でHYPEランキングを競えます。</p></article>
+      </div>
+      <div class="tactic-help">
+        <div><b>⚔️ ストライク</b><span>移動後、同じ場所の相手へ2ダメージ</span></div>
+        <div><b>🛡️ ガード</b><span>受けるダメージを2軽減。防げばGLORY+1</span></div>
+        <div><b>🫳 スナッチ</b><span>同じ場所の相手からGLORYを1奪う</span></div>
+        <div><b>💣 バースト</b><span>同じ場所の全員へ1ダメージ</span></div>
+        <div><b>🎭 フェイント</b><span>攻撃より後に移動。狙いを外させる</span></div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast"></div>
+  </div>
+</body>
+</html>
